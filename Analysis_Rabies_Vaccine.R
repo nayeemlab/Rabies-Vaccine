@@ -641,3 +641,174 @@ rabiesdata$Follow_up_cat <- factor(rabiesdata$Follow_up,levels=c(1,2),labels = c
 
 rabiesdata$Follow_up_cat
 
+
+
+
+
+
+
+
+
+
+
+################################################################################
+## Dengue - Data analysis ##
+################################################################################
+rm(list=ls()) #Remove all previous R objects#
+## Packages ##
+library(maptools)
+library(RColorBrewer)
+library(rgeos)
+library(rgdal)
+library(sp)
+library(sf)
+library(ggrepel)
+library(ggplot2)
+library(tidyverse)
+setwd("E:\\ResearchProject\\Sumon Bhai\\Rabies Vaccine")
+
+sldata <- read.csv("VaccineData.csv", header = T)
+NROW(sldata)
+
+#sldata_inside <- sldata[sldata$Location == "Inside",]
+#sldata_inside <- sldata[sldata$Location == "Outside",]
+shp <- readOGR(dsn = "E:\\ResearchProject\\Sumon Bhai\\Rabies Vaccine\\Dhaka", "cc486qp3429")
+
+head(shp@data)
+xLon = sldata$Longitude
+xLat = sldata$Latitude
+
+sldata_inside <- sldata[sldata$District_cat_MNH=="Inside",]
+
+SL.map <- fortify(shp, region = "fid")
+
+map1 <- ggplot() + 
+  geom_polygon(data = SL.map, aes(x = long, y = lat, group = group), colour = "cadetblue", fill = "azure2") +
+  labs(title = "Location of Rabies patients (inside Dhaka City)") +
+  xlab(label="Longitute") + ylab(label="Latitute")
+map1
+map2 <- map1 +  geom_point(data=sldata_inside, aes(x=Longitude, y=Latitude), colour = "darkgreen", size = 2)+
+  theme(axis.text = element_text(size = 20),
+        axis.title = element_text(size = 20),
+        plot.title = element_text(size = 15))
+
+
+map2
+library(ggforce)
+
+sldata_inside_10km <- sldata[sldata$Latitude >= 23.7640 & sldata$Latitude <= 23.79 & sldata$Longitude >= 90.399 & sldata$Latitude <= 90.401,]
+
+NROW(sldata_inside_10km)/NROW(sldata)
+
+map3 <- map2 +  geom_point(data=sldata_inside, aes(x=IDH_lon, y=IDH_lat), shape=25, colour = "darkred", fill="darkred", size = 4)+
+  geom_circle(aes(x0=90.40583732, y0=23.77612313, r=0.03), inherit.aes=FALSE, colour = "darkred",size = 1) +
+  annotate("text", x =90.37583732, y=23.98612313, 
+           label = paste("Patient's inside 10 km distance = 13.40% \n Outside 10 km distance = 86.6%")) +
+  theme(axis.text = element_text(size = 20),
+        axis.title = element_text(size = 20),
+        plot.title = element_text(size = 15))
+
+
+map3
+
+
+
+
+#bangladesh
+shp <- readOGR(dsn = "E:\\ResearchProject\\Sumon Bhai\\Rabies Vaccine\\sle_admbnda_adm4_1m_gov_ocha", "BGD_adm2")
+
+head(shp@data)
+xLon = sldata$Longitude
+xLat = sldata$Latitude
+
+SL.map <- fortify(shp, region = "NAME_2")
+
+map4 <- ggplot() + 
+  geom_polygon(data = SL.map, aes(x = long, y = lat, group = group), colour = "cadetblue", fill = "azure2") +
+  labs(title = "Location of Rabies patients") +
+  xlab(label="Longitute") + ylab(label="Latitute")
+map4
+map5 <- map4 +  geom_point(data=sldata, aes(x=Longitude, y=Latitude), colour = "darkgreen", size = 1)+ 
+  theme(axis.text = element_text(size = 20),
+        axis.title = element_text(size = 20),
+        plot.title = element_text(size = 15))
+map5
+map6 <- map5 +  geom_point(data=sldata, aes(x=IDH_lon, y=IDH_lat), shape=25, colour = "darkred", fill="darkred", size = 2)+ 
+  theme(axis.text = element_text(size = 20),
+        axis.title = element_text(size = 20),
+        plot.title = element_text(size = 15))
+
+
+map6
+
+
+library(gridExtra)
+tiff("MapBoth.tiff", units="in", width=14, height=7, res=300)
+gridExtra::grid.arrange(map6,map3, ncol=2)
+dev.off()
+
+
+options(scipen=999)
+
+library(pastecs)
+stat.desc(sldata$Age)
+stat.desc(sldata$Family_income)
+stat.desc(sldata$Residence_IDH_kilometer)
+stat.desc(sldata$Travel_cost)
+stat.desc(sldata$Time_required)
+stat.desc(sldata$Time_gap_bit_washing_Hours)
+stat.desc(sldata$Cost_medicine)
+stat.desc(sldata$Time_gap_hrs)
+stat.desc(sldata$Travle_cost_IDH)
+
+c <- table(sldata$Time_gap_hrs, sldata$Why_1stDose_miss)
+c
+round(prop.table(c,1)*100,2)
+summary(c)
+
+y <- ggplot(sldata, aes(x =Time_gap_hrs , y = factor(Why_1stDose_miss), fill = factor(Why_1stDose_miss))) + 
+  geom_bar(stat = "identity", position = "dodge") +
+  xlab("Time (in hours)") + ylab("Reason for coming late to take the vaccine")+ ggtitle("Highest length of delay ")+
+  scale_y_discrete(limits = c("1", "2", "3", 
+                              "4"),
+                   labels = c("Don’t know about the vaccine schedule", "Busy with other works", 
+                              "Bite induced suffering", "Distance"))+theme(axis.text=element_text(size=12,face="bold"),
+                                                          axis.title=element_text(size=14,face="bold"))+
+  scale_color_manual(values=c("darkgreen", "black"))+
+  theme(axis.text = element_text(size = 12),
+        axis.title = element_text(size = 12),
+        plot.title = element_text(size = 12),
+        legend.title = element_text(size=12),
+        legend.text = element_text(size=12),
+        legend.position = "none")
+
+y
+library(psych)
+describe.by(sldata$Time_gap_hrs, sldata$Why_1stDose_miss)
+
+df <- data.frame(HS=c("1", "2", 
+                       "3", "4"),
+                 Days=c(36.68, 52.11, 331.33, 52.31))
+head(df)
+
+z<-ggplot(df, aes(x =Days , y = factor(HS), fill = factor(HS)))  + 
+  geom_bar(stat = "identity", position = "dodge") +
+  xlab("Time (in hours)") + ylab("Reason for coming late to take the vaccine")+ ggtitle("Mean length of delay ")+
+  scale_color_manual(values=c("darkgreen", "black"))+
+  scale_y_discrete(limits = c("1", "2", "3", 
+                              "4"),
+                   labels = c("Don’t know about the vaccine schedule", "Busy with other works", 
+                              "Bite induced suffering", "Distance"))+ theme(axis.text = element_text(size = 12,face="bold"),
+        axis.title = element_text(size = 12,face="bold"),
+        plot.title = element_text(size = 12),
+        legend.title = element_text(size=12),
+        legend.text = element_text(size=12),
+        legend.position = "none")
+
+z
+
+library(gridExtra)
+tiff("Delay.tiff", units="in", width=10, height=10, res=300)
+gridExtra::grid.arrange(y, z, nrow=2, ncol=1)
+dev.off()
+
